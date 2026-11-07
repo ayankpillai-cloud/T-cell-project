@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synthetic Immunology Histology Simulator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app-container">
+        <!-- Control Panel Sidebar -->
+        <div id="sidebar">
+            <h2>Bio-Lab Studio</h2>
+            
+            <label>Mode Select</label>
+            <select id="mode-select">
+                <option value="sandbox">Sandbox Mode</option>
+                <option value="trial1">Trial 1: Desmoplastic Shield</option>
+                <option value="trial2">Trial 2: Checkpoint Sabotage</option>
+            </select>
+
+            <label>Oncology Target Profile</label>
+            <select id="cancer-select">
+                <option value="pancreatic">Pancreatic Adenocarcinoma</option>
+                <option value="glioblastoma">Glioblastoma (Brain)</option>
+            </select>
+
+            <div class="slider-group">
+                <label>Cancer Mass Count: <span id="cancer-val">100</span></label>
+                <input type="range" id="slider-cancer" min="10" max="200" value="100">
+            </div>
+
+            <div class="slider-group">
+                <label>T-Cell Army Size: <span id="tcell-val">80</span></label>
+                <input type="range" id="slider-tcell" min="10" max="150" value="80">
+            </div>
+
+            <div class="slider-group">
+                <label>Velocity Modifier: <span id="speed-val">1.0</span>x</label>
+                <input type="range" id="slider-speed" min="0.1" max="4.0" step="0.1" value="1.0">
+            </div>
+
+            <div id="modifiers-panel">
+                <h3>Engineering Overrides</h3>
+                <label><input type="checkbox" id="mod-hpse" checked> HPSE+ (Matrix Enzyme)</label>
+                <label><input type="checkbox" id="mod-armor"> Metabolic Armoring</label>
+                <label><input type="checkbox" id="mod-crispr"> CRISPR PD-1 Knockout</label>
+            </div>
+
+            <div class="btn-group">
+                <button id="btn-pause">Pause Engine</button>
+                <button id="btn-restart">Restart Engine</button>
+            </div>
+        </div>
+
+        <!-- Central Visualization Space -->
+        <div id="canvas-container">
+            <canvas id="simCanvas" width="600" height="600"></canvas>
+            <div id="telemetry">
+                <p>Live Cancer Burden: <span id="tel-cancer">0</span></p>
+                <p>Active T-Cell Fleet: <span id="tel-tcell">0</span></p>
+                <p>Global Fleet Exhaustion: <span id="tel-exhaustion">0%</span></p>
+            </div>
+        </div>
+    </div>
+    <script src="simulation.js"></script>
+</body>
+</html>
