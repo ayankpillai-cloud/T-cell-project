@@ -1,0 +1,160 @@
+const canvas = document.getElementById('simCanvas');
+const ctx = canvas.getContext('2d');
+
+// Environment Geometry
+const cx = canvas.width / 2;
+const cy = canvas.height / 2;
+const CORE_RADIUS = 130;
+const STROMA_RADIUS = 220;
+const PERFUSION_RADIUS = 280;
+
+let cancerCells = [];
+let tCells = [];
+let isPaused = false;
+let velocityMod = 1.0;
+
+// Grab UI Elements
+const btnPause = document.getElementById('btn-pause');
+const btnRestart = document.getElementById('btn-restart');
+const sliderSpeed = document.getElementById('slider-speed');
+
+// Base Agent Initializer
+function initSimulation() {
+    cancerCells = [];
+    tCells = [];
+    const initCancer = parseInt(document.getElementById('slider-cancer').value);
+    const initTcells = parseInt(document.getElementById('slider-tcell').value);
+
+    // Spawn Red Cancer Particles inside central Core Circle
+    for (let i = 0; i < initCancer; i++) {
+        let theta = Math.random() * Math.PI * 2;
+        let r = Math.random() * (CORE_RADIUS - 10);
+        cancerCells.push({
+            x: cx + r * Math.cos(theta),
+            y: cy + r * Math.sin(theta)
+        });
+    }
+
+    // Deploy entire T-Cell Army SIMULTANEOUSLY all at once inside outermost ring
+    for (let i = 0; i < initTcells; i++) {
+        let theta = Math.random() * Math.PI * 2;
+        let r = CORE_RADIUS + (Math.random() * (PERFUSION_RADIUS - CORE_RADIUS - 20));
+        tCells.push({
+            x: cx + r * Math.cos(theta),
+            y: cy + r * Math.sin(theta),
+            vx: 0, vy: 0,
+            exhaustion: 0,
+            hasSufferedPenalty: false
+        });
+    }
+}
+
+// Main Physics Iteration
+function updateSimulation() {
+    if (isPaused) return;
+
+    const dt = 0.5 * velocityMod;
+    const hasHpse = document.getElementById('mod-hpse').checked;
+    const hasArmor = document.getElementById('mod-armor').checked;
+    const hasCrispr = document.getElementById('mod-crispr').checked;
+
+    tCells.forEach((t, index) => {
+        let dx = t.x - cx;
+        let dy = t.y - cy;
+        let distFromCenter = Math.sqrt(dx*dx + dy*dy);
+
+        // 12% - 51% Mechanical Friction Stroma Penalty Trigger
+        if (distFromCenter >= CORE_RADIUS && distFromCenter <= STROMA_RADIUS && !hasHpse && !t.hasSufferedPenalty) {
+            t.exhaustion += (Math.random() * (51 - 12) + 12);
+            t.hasSufferedPenalty = true;
+        }
+
+        if (cancerCells.length === 0) return;
+
+        // Continuous Active Retargeting to Nearest Enemy Coordinate
+        let closest = null;
+        let minDist = Infinity;
+        let closestIdx = -1;
+
+        cancerCells.forEach((c, cIdx) => {
+            let tdx = c.x - t.x;
+            let tdy = c.y - t.y;
+            let d = Math.sqrt(tdx*tdx + tdy*tdy);
+            if (d < minDist) { minDist = d; closest = c; closestIdx = cIdx; }
+        });
+
+        if (closest) {
+            let hdx = closest.x - t.x;
+            let hdy = closest.y - t.y;
+            let hdist = Math.sqrt(hdx*hdx + hdy*hdy);
+            
+            // STICKY CONTACT LATCHING MECHANIC
+            if (hdist < 10) {
+                t.vx = 0; t.vy = 0; // Lock physical position
+                let drain = 1.0;
+                if (!hasArmor) drain *= 2.0;
+                if (!hasCrispr) drain *= 2.0;
+                t.exhaustion += drain * dt;
+
+                if (Math.random() < 0.05) {
+                    cancerCells.splice(closestIdx, 1);
+                }
+            } else {
+                // Tracking vector calculation
+                t.vx = (hdx / hdist) * 1.5;
+                t.vy = (hdy / hdist) * 1.5;
+                t.x += t.vx * dt;
+                t.y += t.vy * dt;
+            }
+        }
+    });
+
+    // Filtering routine out dead elements (Apoptosis execution)
+    tCells = tCells.filter(t => t.exhaustion < 100);
+}
+
+// Main Render Routine
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Render Concentric Rings
+    ctx.fillStyle = '#120012'; ctx.strokeStyle = '#3d003d'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, cy, CORE_RADIUS, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+
+    ctx.strokeStyle = '#ff6600';
+    ctx.beginPath(); ctx.arc(cx, cy, STROMA_RADIUS, 0, Math.PI*2); ctx.stroke();
+
+    // Render Cancer Cells (Red)
+    ctx.fillStyle = '#ff0033';
+    cancerCells.forEach(c => {
+        ctx.beginPath(); ctx.arc(c.x, c.y, 4, 0, Math.PI*2); ctx.fill();
+    });
+
+    // Render T-Cells (Blue)
+    ctx.fillStyle = '#00b3ff';
+    tCells.forEach(t => {
+        ctx.beginPath(); ctx.arc(t.x, t.y, 3, 0, Math.PI*2); ctx.fill();
+    });
+
+    // Update Live UI Telemetry Numbers
+    document.getElementById('tel-cancer').innerText = cancerCells.length;
+    document.getElementById('tel-tcell').innerText = tCells.length;
+    let avgEx = tCells.length ? (tCells.reduce((acc, t) => acc + t.exhaustion, 0) / tCells.length).toFixed(1) : 100;
+    document.getElementById('tel-exhaustion').innerText = avgEx + '%';
+}
+
+function loop() {
+    updateSimulation();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+// Link UI Control Events
+btnPause.onclick = () => { isPaused = !isPaused; btnPause.innerText = isPaused ? "Resume" : "Pause"; };
+btnRestart.onclick = initSimulation;
+sliderSpeed.oninput = (e) => { velocityMod = parseFloat(e.target.value); document.getElementById('speed-val').innerText = e.target.value; };
+document.getElementById('slider-cancer').oninput = (e) => document.getElementById('cancer-val').innerText = e.target.value;
+document.getElementById('slider-tcell').oninput = (e) => document.getElementById('tcell-val').innerText = e.target.value;
+
+initSimulation();
+loop();
